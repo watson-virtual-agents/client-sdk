@@ -23,6 +23,7 @@ var storage = require('./storage');
 var options = {
 	baseURL: 'https://dev.api.ibm.com/virtualagent/development/api/v1/',
 	timeout: 30 * 1000,
+	userID: null,
 	withCredentials: false,
 	XIBMClientID: false,
 	XIBMClientSecret: false
@@ -55,6 +56,7 @@ var SDK = module.exports = {
 	 * @param {Object} config
 	 * @param {string} config.baseURL=https://dev.api.ibm.com/virtualagent/development/api/v1/ - Optional: The URL the SDK should prepend to requests.
 	 * @param {int} config.timeout=30000 - Optional: How long requests should wait before they error.
+	 * @param {string} config.userID - Optional: A user identifier, transformed by a one-way hashing algorithm.
 	 * @param {string} config.withCredentials - Optional: indicates whether or not cross-site Access-Control requests should be made using credentials
 	 * @param {string} config.XIBMClientID - Optional: Your X-IBM-Client-Id. This should not be made public in a public environment. Including this will add X-IBM-Client-Id as a header to your request.
 	 * @param {string} config.XIBMClientSecret - Optional: Your X-IBM-Client-Secret. This should not be made public in a public environment. Including this will add X-IBM-Client-Secret as a header to your request.
@@ -94,10 +96,11 @@ var SDK = module.exports = {
 	 */
 	start: function( botID ) {
 		var requestID = uuid();
+		var data = { userID: options.userID };
 		var endpoint = '/bots/'+ botID +'/dialogs';
 		var config = { 'headers': { 'X-Request-ID': requestID } };
 		return api
-			.post( endpoint, {}, config )
+			.post( endpoint, data, config )
 			.then( function( res ) {
 				return {
 					chatID: res.data.dialog_id,
@@ -127,7 +130,7 @@ var SDK = module.exports = {
 	 */
 	send: function( botID, chatID, message ) {
 		var requestID = uuid();
-		var data = { message: message };
+		var data = { message: message, userID: options.userID };
 		var endpoint = '/bots/'+ botID +'/dialogs/'+ chatID +'/messages';
 		var query = 'message='+ encodeURIComponent( message );
 		var config = { 'headers': { 'X-Request-ID': requestID } };
