@@ -9,7 +9,7 @@
     "watch-web": "webpack --config ./config/web.js --watch",
     "build-node": "webpack --config ./config/node.js",
     "watch-node": "webpack --config ./config/node.js --watch",
-    "publish": "npm run build && npm publish",
+    "prepublish": "npm run build",
     "test": "echo \"No Tests\""
   },
   "keywords": [
