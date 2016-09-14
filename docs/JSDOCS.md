@@ -134,6 +134,7 @@ Configure the Client SDK
 | config | <code>Object</code> |  |  |
 | config.baseURL | <code>string</code> | <code>&quot;https://dev.api.ibm.com/virtualagent/development/api/v1/&quot;</code> | Optional: The URL the SDK should prepend to requests. |
 | config.timeout | <code>int</code> | <code>30000</code> | Optional: How long requests should wait before they error. |
+| config.userID | <code>string</code> |  | Optional: A user identifier, transformed by a one-way hashing algorithm. |
 | config.withCredentials | <code>string</code> |  | Optional: indicates whether or not cross-site Access-Control requests should be made using credentials |
 | config.XIBMClientID | <code>string</code> |  | Optional: Your X-IBM-Client-Id. This should not be made public in a public environment. Including this will add X-IBM-Client-Id as a header to your request. |
 | config.XIBMClientSecret | <code>string</code> |  | Optional: Your X-IBM-Client-Secret. This should not be made public in a public environment. Including this will add X-IBM-Client-Secret as a header to your request. |
@@ -156,7 +157,7 @@ Start a new chat session
 
 **Example**  
 ```js
-SDK.start(botID)  .then(function(res) {    console.log(res.chatID, res.message);  })  .catch(function(err) {    console.error(err);  });
+SDK.start(botID)   .then(function(res) {     console.log(res.chatID, res.message);   })   .catch(function(err) {     console.error(err);   });
 ```
 <a name="SDK.send"></a>
 
@@ -174,5 +175,5 @@ Send a message to a chat session
 
 **Example**  
 ```js
-SDK.send(botID, chatID, 'Hello!')  .then(function(data) {    console.log(data.message);  })  .catch(function(err) {    console.error(err);  });
+SDK.send(botID, chatID, 'Hello!')   .then(function(data) {     console.log(data.message);   })   .catch(function(err) {     console.error(err);   });
 ```
