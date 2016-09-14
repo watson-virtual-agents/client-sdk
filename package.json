@@ -1,6 +1,6 @@
 {
   "name": "@watson-virtual-agent/client-sdk",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "JS Client SDK for IBM Watson Virtual Agents",
   "main": "index.js",
   "scripts": {
