@@ -30,7 +30,7 @@ var options = {
 
 var api = axios.create( options );
 
-var profileDataRe = new RegExp(/\|&(.*?)\|/, 'g');
+var profileDataRe = /\|&(.*?)\|/g;
 var insertUserProfileData = function(msg) {
 	for (var i = 0; i < msg.text.length; i++) {
 		var matches = (msg.text[i].match(profileDataRe) || []);
