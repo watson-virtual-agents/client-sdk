@@ -200,7 +200,7 @@ For advanced documentation about using involving configuration and handling PII,
 see [./docs/JSDOCS.md](./docs/JSDOCS.md).
 
 The Watson Virtual Agent - Client SDK is related to the [Watson Virtual
-Agent - Chat Widget](https://github.com/watson-virtual-agent/chat-widget)
+Agent - Chat Widget](https://github.com/watson-virtual-agents/chat-widget)
 (the Widget). The Widget is a browser-only chat component built on top of the
 SDK, and it contains a configurable user interface and a set of utilities. You
 can use it as-is, or you can customize it. Alternatively, if you want to have
