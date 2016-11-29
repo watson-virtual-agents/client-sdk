@@ -33,13 +33,15 @@ var api = axios.create( options );
 
 var profileDataRe = /\|&(.*?)\|/g;
 var insertUserProfileData = function(msg) {
-	for (var i = 0; i < msg.text.length; i++) {
-		var matches = (msg.text[i].match(profileDataRe) || []);
-		msg.text[i] = matches.reduce(function(result, prof) {
-			const name = prof.slice( 2, -1 );
-			const value = storage.get(name);
-			return result.replace( prof, value );
-		}, msg.text[i]);
+	if (msg && msg.text && msg.text.isArray()) {
+		for (var i = 0; i < msg.text.length; i++) {
+			var matches = (msg.text[i].match(profileDataRe) || []);
+			msg.text[i] = matches.reduce(function(result, prof) {
+				const name = prof.slice( 2, -1 );
+				const value = storage.get(name);
+				return result.replace( prof, value );
+			}, msg.text[i]);
+		}
 	}
 	return msg;
 };
