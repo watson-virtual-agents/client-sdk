@@ -32,16 +32,22 @@ var options = {
 var api = axios.create( options );
 
 var profileDataRe = /\|&(.*?)\|/g;
+var profileDataToString = function(text) {
+	var matches = (text.match(profileDataRe) || []);
+	text = matches.reduce(function(result, prof) {
+		const name = prof.slice( 2, -1 );
+		const value = storage.get(name);
+		return result.replace( prof, value );
+	}, text);
+	return text;
+};
+
 var insertUserProfileData = function(msg) {
-	if (msg && msg.text && msg.text.isArray()) {
-		for (var i = 0; i < msg.text.length; i++) {
-			var matches = (msg.text[i].match(profileDataRe) || []);
-			msg.text[i] = matches.reduce(function(result, prof) {
-				const name = prof.slice( 2, -1 );
-				const value = storage.get(name);
-				return result.replace( prof, value );
-			}, msg.text[i]);
-		}
+	if (msg && msg.text && Array.isArray(msg.text)) {
+		for (var i = 0; i < msg.text.length; i++)
+			msg.text[i] = profileDataToString(msg.text[i]);
+	} else if (msg && msg.text && typeof(msg.text) === 'string') {
+		msg.text = profileDataToString(msg.text);
 	}
 	return msg;
 };
