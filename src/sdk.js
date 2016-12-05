@@ -48,6 +48,8 @@ var insertUserProfileData = function(msg) {
 			msg.text[i] = profileDataToString(msg.text[i]);
 	} else if (msg && msg.text && typeof(msg.text) === 'string') {
 		msg.text = profileDataToString(msg.text);
+	} else {
+		msg.text = ['Text response is missing.'];
 	}
 	return msg;
 };
