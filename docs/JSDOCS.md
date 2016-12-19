@@ -14,6 +14,7 @@
     * [.configure(config)](#SDK.configure) ⇒ <code>[SDK](#SDK)</code>
     * [.start(botID)](#SDK.start) ⇒ <code>Promise({ chatID: &quot;string&quot;, message: &quot;string&quot; })</code>
     * [.send(botID, chatID, message)](#SDK.send) ⇒ <code>Promise({ message: &quot;string&quot; })</code>
+    * [.parse(message)](#SDK.parse) ⇒ <code>Any</code>
 
 <a name="SDK.profile"></a>
 
@@ -119,7 +120,9 @@ Iterate over the profile.
 
 **Example**  
 ```js
-SDK.profile.forEach(function(key, value) {  console.log(key, value);});
+SDK.profile.forEach(function(key, value) {
+  console.log(key, value);
+});
 ```
 <a name="SDK.configure"></a>
 
@@ -141,7 +144,9 @@ Configure the Client SDK
 
 **Example**  
 ```js
-SDK.configure({  baseURL: 'https://server.mysite.com'});
+SDK.configure({
+  baseURL: 'https://server.mysite.com'
+});
 ```
 <a name="SDK.start"></a>
 
@@ -157,7 +162,13 @@ Start a new chat session
 
 **Example**  
 ```js
-SDK.start(botID)   .then(function(res) {     console.log(res.chatID, res.message);   })   .catch(function(err) {     console.error(err);   });
+SDK.start(botID)
+   .then(function(res) {
+     console.log(res.chatID, res.message);
+   })
+   .catch(function(err) {
+     console.error(err);
+   });
 ```
 <a name="SDK.send"></a>
 
@@ -175,5 +186,28 @@ Send a message to a chat session
 
 **Example**  
 ```js
-SDK.send(botID, chatID, 'Hello!')   .then(function(data) {     console.log(data.message);   })   .catch(function(err) {     console.error(err);   });
+SDK.send(botID, chatID, 'Hello!')
+   .then(function(data) {
+     console.log(data.message);
+   })
+   .catch(function(err) {
+     console.error(err);
+   });
+```
+<a name="SDK.parse"></a>
+
+### SDK.parse(message) ⇒ <code>Any</code>
+Iterate profile data into a given message object.
+
+**Kind**: static method of <code>[SDK](#SDK)</code>  
+**Returns**: <code>Any</code> - Returns: The message in original format with variables replaced.  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| message | <code>Any</code> | A string or message object to insert profile data into. |
+
+**Example**  
+```js
+var message = "You owe |&bill_amount|.";
+var parsed = SDK.parse(message);
 ```
