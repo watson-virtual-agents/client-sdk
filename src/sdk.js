@@ -32,26 +32,15 @@ var options = {
 var api = axios.create( options );
 
 var profileDataRe = /\|&(.*?)\|/g;
-var profileDataToString = function(text) {
-	var matches = (text.match(profileDataRe) || []);
-	text = matches.reduce(function(result, prof) {
-		const name = prof.slice( 2, -1 );
-		const value = storage.get(name);
-		return result.replace( prof, value );
-	}, text);
-	return text;
-};
-
 var insertUserProfileData = function(msg) {
-	if (msg && msg.text && Array.isArray(msg.text)) {
-		for (var i = 0; i < msg.text.length; i++)
-			msg.text[i] = profileDataToString(msg.text[i]);
-	} else if (msg && msg.text && typeof(msg.text) === 'string') {
-		msg.text = profileDataToString(msg.text);
-	} else {
-		msg.text = ['Text response is missing.'];
-	}
-	return msg;
+	var flatten = (typeof msg === 'string') ? msg : JSON.stringify(msg);
+	var matches = (flatten.match(profileDataRe) || []);
+	flatten = matches.reduce(function(result, prof) {
+		const name = prof.slice( 2, -1 );
+		const value = storage.get(name) || name;
+		return result.replace( prof, value );
+	}, flatten);
+	return (typeof msg === 'string') ? flatten : JSON.parse(flatten);
 };
 
 /**
@@ -155,6 +144,17 @@ var SDK = module.exports = {
 				onError( err );
 			});
 	},
+	/**
+	* Iterate profile data into a given message object.
+	* @memberof SDK
+	* @function parse
+	* @param {Any} message - A string or message object to insert profile data into.
+	* @returns {Any} Returns: The message in original format with variables replaced.
+	* @example
+	* var message = "You owe |&bill_amount|.";
+	* var parsed = SDK.parse(message);
+	*/
+	parse: insertUserProfileData,
 	/**
 	 * @namespace profile
 	 * @memberof SDK
