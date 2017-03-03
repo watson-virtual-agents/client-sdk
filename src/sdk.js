@@ -55,13 +55,16 @@ var SDK = module.exports = {
 	 * @param {Object} config
 	 * @param {string} config.baseURL=https://dev.api.ibm.com/virtualagent/development/api/v1/ - Optional: The URL the SDK should prepend to requests.
 	 * @param {int} config.timeout=30000 - Optional: How long requests should wait before they error.
-	 * @param {string} config.userID - Optional: A user identifier, transformed by a one-way hashing algorithm.
+	 * @param {string} config.userID - Optional: A user identifier, transformed by a one-way hashing algorithm. Used by your Metrics Dashboard to track usage.
+	 * @param {string} config.userLatLon - Optional: lat,lon or user ( eg. 28.3852,-81.5639 ). Used by your Metrics Dashboard to track usage.
 	 * @param {string} config.withCredentials - Optional: indicates whether or not cross-site Access-Control requests should be made using credentials
 	 * @param {string} config.XIBMClientID - Optional: Your X-IBM-Client-Id. This should not be made public in a public environment. Including this will add X-IBM-Client-Id as a header to your request.
 	 * @param {string} config.XIBMClientSecret - Optional: Your X-IBM-Client-Secret. This should not be made public in a public environment. Including this will add X-IBM-Client-Secret as a header to your request.
 	 * @example
 	 * SDK.configure({
-	 *   baseURL: 'https://server.mysite.com'
+	 *   baseURL: 'https://server.mysite.com',
+	 *   userID: 'poiuytrewq',
+	 *   userLatLon: '28.3852,-81.5639'
 	 * });
 	 * @returns {SDK} Returns: The SDK singleton
 	 */
@@ -95,7 +98,7 @@ var SDK = module.exports = {
 	 */
 	start: function( botID ) {
 		var requestID = uuid();
-		var data = { userID: options.userID };
+		var data = { userID: options.userID, userLatLon: options.userLatLon };
 		var endpoint = '/bots/'+ botID +'/dialogs';
 		var config = { 'headers': { 'X-Request-ID': requestID } };
 		return api
@@ -129,7 +132,7 @@ var SDK = module.exports = {
 	 */
 	send: function( botID, chatID, message ) {
 		var requestID = uuid();
-		var data = { message: message, userID: options.userID };
+		var data = { message: message, userID: options.userID, userLatLon: options.userLatLon };
 		var endpoint = '/bots/'+ botID +'/dialogs/'+ chatID +'/messages';
 		var query = 'message='+ encodeURIComponent( message );
 		var config = { 'headers': { 'X-Request-ID': requestID } };
