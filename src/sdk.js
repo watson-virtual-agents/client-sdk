@@ -120,7 +120,7 @@ var SDK = module.exports = {
 	 * @param {string} botID - Your botID
 	 * @param {string} chatID - Your chatID provided by SDK.start
 	 * @param {string} message - Your message
-	 * @param {string} context - (optional) Context variables to pass to your [Custom Workspaces](https://www.ibm.com/watson/developercloud/doc/conversation/dialog-build.html#context-variables)
+	 * @param {Object} context - (optional) Context variables to pass to your [Custom Workspaces](https://www.ibm.com/watson/developercloud/doc/conversation/dialog-build.html#context-variables)
 	 * @example
 	 * SDK.send(botID, chatID, 'Hello!')
 	 *    .then(function(data) {
