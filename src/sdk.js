@@ -134,10 +134,9 @@ var SDK = module.exports = {
 		var requestID = uuid();
 		var data = { message: message, userID: options.userID, userLatLon: options.userLatLon };
 		var endpoint = '/bots/'+ botID +'/dialogs/'+ chatID +'/messages';
-		var query = 'message='+ encodeURIComponent( message );
 		var config = { 'headers': { 'X-Request-ID': requestID } };
 		return api
-			.post( endpoint +'?'+ query, data, config )
+			.post( endpoint, data, config )
 			.then( function( res ) {
 				return {
 					message: insertUserProfileData(res.data.message)
