@@ -13,7 +13,7 @@
         * [.forEach(callback, this)](#SDK.profile.forEach) ⇒ <code>Object</code>
     * [.configure(config)](#SDK.configure) ⇒ <code>[SDK](#SDK)</code>
     * [.start(botID)](#SDK.start) ⇒ <code>Promise({ chatID: &quot;string&quot;, message: &quot;string&quot; })</code>
-    * [.send(botID, chatID, message)](#SDK.send) ⇒ <code>Promise({ message: &quot;string&quot; })</code>
+    * [.send(botID, chatID, message, context)](#SDK.send) ⇒ <code>Promise({ message: &quot;string&quot; })</code>
     * [.parse(message)](#SDK.parse) ⇒ <code>Any</code>
 
 <a name="SDK.profile"></a>
@@ -175,7 +175,7 @@ SDK.start(botID)
 ```
 <a name="SDK.send"></a>
 
-### SDK.send(botID, chatID, message) ⇒ <code>Promise({ message: &quot;string&quot; })</code>
+### SDK.send(botID, chatID, message, context) ⇒ <code>Promise({ message: &quot;string&quot; })</code>
 Send a message to a chat session
 
 **Kind**: static method of <code>[SDK](#SDK)</code>  
@@ -186,6 +186,7 @@ Send a message to a chat session
 | botID | <code>string</code> | Your botID |
 | chatID | <code>string</code> | Your chatID provided by SDK.start |
 | message | <code>string</code> | Your message |
+| context | <code>Object</code> | (optional) Context variables to pass to your [Custom Workspaces](https://www.ibm.com/watson/developercloud/doc/conversation/dialog-build.html#context-variables) |
 
 **Example**  
 ```js
