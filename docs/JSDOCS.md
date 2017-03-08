@@ -13,7 +13,7 @@
         * [.forEach(callback, this)](#SDK.profile.forEach) ⇒ <code>Object</code>
     * [.configure(config)](#SDK.configure) ⇒ <code>[SDK](#SDK)</code>
     * [.start(botID)](#SDK.start) ⇒ <code>Promise({ chatID: &quot;string&quot;, message: &quot;string&quot; })</code>
-    * [.send(botID, chatID, message)](#SDK.send) ⇒ <code>Promise({ message: &quot;string&quot; })</code>
+    * [.send(botID, chatID, message, context)](#SDK.send) ⇒ <code>Promise({ message: &quot;string&quot; })</code>
     * [.parse(message)](#SDK.parse) ⇒ <code>Any</code>
 
 <a name="SDK.profile"></a>
@@ -137,7 +137,8 @@ Configure the Client SDK
 | config | <code>Object</code> |  |  |
 | config.baseURL | <code>string</code> | <code>&quot;https://dev.api.ibm.com/virtualagent/development/api/v1/&quot;</code> | Optional: The URL the SDK should prepend to requests. |
 | config.timeout | <code>int</code> | <code>30000</code> | Optional: How long requests should wait before they error. |
-| config.userID | <code>string</code> |  | Optional: A user identifier, transformed by a one-way hashing algorithm. |
+| config.userID | <code>string</code> |  | Optional: A user identifier, transformed by a one-way hashing algorithm. Used by your Metrics Dashboard to track usage. |
+| config.userLatLon | <code>string</code> |  | Optional: lat,lon or user ( eg. 28.3852,-81.5639 ). Used by your Metrics Dashboard to track usage. |
 | config.withCredentials | <code>string</code> |  | Optional: indicates whether or not cross-site Access-Control requests should be made using credentials |
 | config.XIBMClientID | <code>string</code> |  | Optional: Your X-IBM-Client-Id. This should not be made public in a public environment. Including this will add X-IBM-Client-Id as a header to your request. |
 | config.XIBMClientSecret | <code>string</code> |  | Optional: Your X-IBM-Client-Secret. This should not be made public in a public environment. Including this will add X-IBM-Client-Secret as a header to your request. |
@@ -145,7 +146,9 @@ Configure the Client SDK
 **Example**  
 ```js
 SDK.configure({
-  baseURL: 'https://server.mysite.com'
+  baseURL: 'https://server.mysite.com',
+  userID: 'poiuytrewq',
+  userLatLon: '28.3852,-81.5639'
 });
 ```
 <a name="SDK.start"></a>
@@ -172,7 +175,7 @@ SDK.start(botID)
 ```
 <a name="SDK.send"></a>
 
-### SDK.send(botID, chatID, message) ⇒ <code>Promise({ message: &quot;string&quot; })</code>
+### SDK.send(botID, chatID, message, context) ⇒ <code>Promise({ message: &quot;string&quot; })</code>
 Send a message to a chat session
 
 **Kind**: static method of <code>[SDK](#SDK)</code>  
@@ -183,6 +186,7 @@ Send a message to a chat session
 | botID | <code>string</code> | Your botID |
 | chatID | <code>string</code> | Your chatID provided by SDK.start |
 | message | <code>string</code> | Your message |
+| context | <code>Object</code> | (optional) Context variables to pass to your [Custom Workspaces](https://www.ibm.com/watson/developercloud/doc/conversation/dialog-build.html#context-variables) |
 
 **Example**  
 ```js
