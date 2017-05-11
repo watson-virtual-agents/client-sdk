@@ -112,8 +112,8 @@ SDK.prototype.parse = function( msg ) {
 	var message = ( typeof msg === 'string' ) ? msg : JSON.stringify( msg );
 	var matches = ( message.match( PROFILE_REGEX ) || [] );
 	var flattened = matches.reduce( function( result, match ) {
-		const name = match.slice( 2, -1 );
-		const value = this.storage.get( name ) || name;
+		var name = match.slice( 2, -1 );
+		var value = this.storage.get( name ) || name;
 		return result.replace( match, value );
 	}.bind( this ), message );
 	return ( typeof msg === 'string' ) ? flattened : JSON.parse( flattened );
