@@ -42,10 +42,10 @@ function SDK( options, storage ) {
 	this._api = API.create( options.baseURL, {
 		credentials: options.credentials,
 		timeout: options.timeout,
-		headers: {
+		headers: ( options.clientID && options.clientSecret ) ? {
 			'X-IBM-Client-Id': options.clientID,
 			'X-IBM-Client-Secret': options.clientSecret
-		}
+		} : { }
 	});
 }
 
