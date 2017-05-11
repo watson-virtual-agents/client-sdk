@@ -2,12 +2,15 @@
   "name": "@watson-virtual-agent/client-sdk",
   "version": "1.3.0",
   "description": "JS Client SDK for IBM Watson Virtual Agents",
-  "main": "index.js",
+  "main": "lib/node",
+  "browser": "lib/web",
+  "author": "IBM Corp",
+  "license": "Apache-2.0",
   "scripts": {
     "build": "jsdoc2md \"src/sdk.js\" > docs/JSDOCS.md && npm run build-web && npm run build-node",
     "build-web": "webpack --config ./config/web.js",
-    "watch-web": "webpack --config ./config/web.js --watch",
     "build-node": "webpack --config ./config/node.js",
+    "watch-web": "webpack --config ./config/web.js --watch",
     "watch-node": "webpack --config ./config/node.js --watch",
     "prepublish": "npm run build",
     "test": "echo \"No Tests\""
@@ -17,19 +20,16 @@
     "Watson",
     "Watson Virtual Agent"
   ],
-  "author": "IBM Corp",
-  "license": "Apache-2.0",
   "dependencies": {
-    "axios": "0.12.0",
-    "es6-promise": "3.2.1",
-    "lodash.assign": "4.1.0"
+    "es6-object-assign": "1.1.0",
+    "es6-promise": "4.1.0",
+    "isomorphic-fetch": "2.2.1"
   },
   "devDependencies": {
-    "eslint": "3.0.0",
+    "eslint": "3.19.0",
     "eslint-loader": "1.4.0",
     "inquirer": "1.1.1",
     "jsdoc-to-markdown": "1.3.7",
-    "json-loader": "0.5.4",
-    "webpack": "1.13.1"
+    "webpack": "2.5.1"
   }
 }
