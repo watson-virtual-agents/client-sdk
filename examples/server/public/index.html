@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>WVA Client SDK - Server Example</title>
+		<style>
+			* { box-sizing: border-box; }
+			html, body {
+				font-family: Arial;
+			}
+			h3 {
+				text-align: center;
+			}
+			div.container {
+				width: 400px;
+				margin: 0 auto;
+			}
+			div.messages {
+				width: 400px;
+				height: 500px;
+				margin-bottom: 10px;
+				border: 1px solid rgba( 0, 0, 0, 0.1 );
+				border-radius: 3px;
+				overflow-x: auto;
+				overflow-y: scroll;
+			}
+			div.messages div.placeholder {
+				width: 200px;
+				margin: 100px auto;
+				text-align: center;
+				font-size: small;
+				font-style: italic;
+			}
+			div.messages div.message {
+				padding: 5px 50px 12px 8px;
+				font-size: small;
+				white-space: pre-wrap;
+			}
+			div.messages div.message.user {
+				padding: 5px 8px 12px 50px;
+				text-align: right;
+				color: green;
+			}
+			div.controls, div.login {
+				width: 400px;
+			}
+			div.controls input[type=text], div.login input[type=text] {
+				width: 315px;
+				padding: 5px 3px;
+				margin-right: 5px;
+				border: 1px solid rgba( 0, 0, 0, 0.1 );
+				border-radius: 3px;
+			}
+			div.controls input[type=submit], div.login input[type=submit] {
+				width: 75px;
+				padding: 5px 3px;
+				border: 0;
+				border-radius: 3px;
+				color: white;
+				background: rgba( 128, 200, 255, 1.0 );
+			}
+			div.alert {
+				color: maroon;
+				font-size: small;
+				padding: 5px 3px;
+			}
+		</style>
+		<script>
+			document.addEventListener('DOMContentLoaded', ()=> {
+				console.log('Hi, Developer!');
+				
+				let user = null;
+				
+				const messages = document.querySelector('div.messages');
+				const loginControls = document.querySelector('div.login');
+				const userID = document.getElementById('user-id');
+				const userSubmit = document.getElementById('user-submit');
+				const chatControls = document.querySelector('div.controls');
+				const chatInput = document.getElementById('chat-input');
+				const chatSubmit = document.getElementById('chat-submit');
+				const alert = document.querySelector('div.alert');
+				
+				const addMessage = ( message, isUser = false )=> {
+					const element = document.createElement('div');
+					element.classList.add('message');
+					if ( isUser )
+						element.classList.add('user');
+					element.textContent = message;
+					messages.appendChild( element );
+					messages.scrollTop = messages.scrollHeight;
+				};
+				
+				const sendMessage = userInput => {
+					if ( userInput !== '%__start__%' )
+						addMessage( userInput, true );
+					chatInput.value = '';
+					const options = {
+						'method': 'POST',
+						'headers': {
+							'Accept': 'application/json',
+							'Content-Type': 'application/json'
+						},
+						'body': JSON.stringify({
+							'message': userInput.trim(),
+							'userID': user.id
+						})
+					};
+					fetch('/chat', options )
+						.then( res => {
+							if ( !res.ok ) throw res;
+							return res.json();
+						})
+						.then( body => {
+							console.log( body );
+							body.text.forEach( message => {
+								addMessage( message );
+							});
+						})
+						.catch( err => {
+							console.error( err );
+							if ( err instanceof Response && !err.bodyUsed ) {
+								err.text().then( text => {
+									alert.textContent = text;
+								});
+							}
+							else alert.textContent = "An error occurred.";
+						});
+				};
+				
+				// Login Enter Handler
+				userID.addEventListener('keypress', evt => {
+					if ( evt.keyCode === 13 )
+						userSubmit.click();
+				});
+				
+				// Register Login Submit Handler
+				userSubmit.addEventListener('click', evt => {
+					evt.preventDefault();
+					user = { 'id': userID.value };
+					messages.innerHTML = '';
+					loginControls.style.display = 'none';
+					chatControls.style.display = 'block';
+					chatInput.focus();
+					// Start WVA Chat
+					sendMessage('%__start__%');
+				});
+				
+				// Chat Enter Handler
+				chatInput.addEventListener('keypress', evt => {
+					if ( evt.keyCode === 13 )
+						chatSubmit.click();
+				});
+				
+				// Register Chat Submit Handler
+				chatSubmit.addEventListener('click', evt => {
+					evt.preventDefault();
+					alert.textContent = "";
+					sendMessage( chatInput.value );
+				});
+			}, false );
+		</script>
+	</head>
+	<body>
+		<div class="container">
+			<h3>WVA Client SDK - Server Example</h3>
+			<div class="messages">
+				<div class="placeholder">
+					Please Login Below To Chat.<br />
+					Any Username Can Be Used.
+				</div>
+			</div>
+			<div class="login">
+				<input id="user-id" type="text" placeholder="Username..." />
+				<input id="user-submit" type="submit" value="Login" />
+			</div>
+			<div class="controls" style="display: none;">
+				<input id="chat-input" type="text" placeholder="Response..." />
+				<input id="chat-submit" type="submit" value="Send" />
+			</div>
+			<div class="alert" />
+		</div>
+	</body>
+</html>

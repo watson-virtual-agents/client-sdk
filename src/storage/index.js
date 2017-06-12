@@ -20,16 +20,32 @@ Storage.prototype.set = function(/* userID, key, value */) {
 	throw new Error('Storage.prototype.set must be overridden.');
 };
 
-Storage.prototype.get = function(/* userID, key */) {
+Storage.prototype.get = function(/* userID, key, fallback */) {
 	throw new Error('Storage.prototype.get must be overridden.');
+};
+
+Storage.prototype.getKeys = function(/* userID, keys */) {
+	throw new Error('Storage.prototype.getKeys must be overridden.');
+};
+
+Storage.prototype.getUser = function(/* userID */) {
+	throw new Error('Storage.prototype.getUser must be overridden.');
 };
 
 Storage.prototype.has = function(/* userID, key */) {
 	throw new Error('Storage.prototype.has must be overridden.');
 };
 
-Storage.prototype.clear = function(/* userID */) {
+Storage.prototype.clear = function(/* userID, key */) {
 	throw new Error('Storage.prototype.clear must be overridden.');
+};
+
+Storage.prototype.clearUser = function(/* userID */) {
+	throw new Error('Storage.prototype.clearUser must be overridden.');
+};
+
+Storage.prototype.clearAll = function() {
+	throw new Error('Storage.prototype.clearAll must be overridden.');
 };
 
 Storage.prototype.delete = function(/* userID, key */) {

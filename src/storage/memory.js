@@ -33,26 +33,50 @@ MemoryStorage.prototype._getUser = function( userID ) {
 MemoryStorage.prototype.set = function( userID, key, value ) {
 	var user = this._getUser( userID );
 	user[key] = value;
-	return this;
+	return Promise.resolve( value );
 };
 
-MemoryStorage.prototype.get = function( userID, key ) {
-	return this._getUser( userID )[ key ] || '';
+MemoryStorage.prototype.get = function( userID, key, fallback ) {
+	var _fallback = fallback === undefined ? '' : fallback;
+	return Promise.resolve( this._getUser( userID )[ key ] || _fallback );
+};
+
+MemoryStorage.prototype.getKeys = function( userID, keys ) {
+	var _keys = keys || [];
+	var user = this._getUser( userID );
+	return Promise.resolve( _keys.reduce( function( data, key ) {
+		data[key] = user[key] || '';
+		return data;
+	}, {}));
+};
+
+MemoryStorage.prototype.getUser = function( userID ) {
+	return Promise.resolve( this._getUser( userID ));
 };
 
 MemoryStorage.prototype.has = function( userID, key ) {
-	return ( this._getUser( userID )[ key ] !== undefined );
+	return Promise.resolve( this._getUser( userID )[ key ] !== undefined );
 };
 
-MemoryStorage.prototype.clear = function( userID ) {
+MemoryStorage.prototype.clear = function( userID, key ) {
+	delete this._data[ userID ][ key ];
+	return Promise.resolve( key );
+};
+
+MemoryStorage.prototype.clearUser = function( userID ) {
 	this._data[ userID ] = {};
-	return this;
+	return Promise.resolve( userID );
+};
+
+MemoryStorage.prototype.clearAll = function() {
+	this._data = {};
+	return Promise.resolve( this );
 };
 
 MemoryStorage.prototype.delete = function( userID, key ) {
 	var user = this._getUser( userID );
 	delete user[ key ];
-	return this;
+	return Promise.resolve( key );
 };
 
 MemoryStorage.prototype.forEach = function( userID, iterator, context ) {
@@ -63,7 +87,7 @@ MemoryStorage.prototype.forEach = function( userID, iterator, context ) {
 		else
 			iterator( key, user[ key ]);
 	});
-	return this;
+	return Promise.resolve( true );
 };
 
 module.exports = MemoryStorage;

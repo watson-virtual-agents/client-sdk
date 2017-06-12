@@ -15,28 +15,24 @@
 */
 
 var API = require('./api');
+var FlowEmitter = require('./flow-emitter');
+var Storage = require('./storage');
 var MemoryStorage = require('./storage/memory');
 
 var PROFILE_REGEX = /\|&(.*?)\|/g;
 var DEFAULTS = {
-	baseURL: 'https://dev.api.ibm.com/virtualagent/development/api/v1/',
+	agentID: null,
+	baseURL: 'https://api.ibm.com/virtualagent/run/api/v1',
 	clientID: false,
 	clientSecret: false,
 	credentials: 'same-origin',
-	timeout: 30 * 1000,
-	onError: function( err, requestID ) {
-		console.error('Request failed:', requestID );
-		if ( !err.status )
-			throw err;
-		var status = err.status;
-		var statusText = err.statusText;
-		var error = new Error( statusText );
-		error.status = status;
-		throw error;
-	}
+	preprocess: function( o ) { return o; },
+	timeout: 30 * 1000
 };
 
-function SDK( options, storage ) {
+function SDK( config, storage ) {
+	FlowEmitter.call( this );
+	var options = Object.assign({ }, DEFAULTS, config );
 	this.storage = storage || new MemoryStorage();
 	this._options = options;
 	this._api = API.create( options.baseURL, {
@@ -49,79 +45,145 @@ function SDK( options, storage ) {
 	});
 }
 
-SDK.prototype.start = function( agentID, botID, user ) {
-	var endpoint = '/bots/'+ botID +'/dialogs';
+SDK.prototype = Object.create( FlowEmitter.prototype );
+SDK.prototype.constructor = SDK;
+
+SDK.prototype.start = function( userID/*, context*/ ) {
+	var self = this;
+	// var _context = context === undefined ? {} : context;
+	var agentID = self._options.agentID;
+	var endpoint = '/bots/'+ agentID +'/dialogs';
 	var requestID = API.uuid();
-	var config = { 'headers': { 'X-Request-ID': requestID } };
-	var data = {
-		userID: user.id,
-		userLatLon: user.location
+	var config = {
+		'headers': { 'X-Request-ID': requestID },
+		'timeout': self._options.timeout
 	};
-	var call = this._api.post(, data, config );
-	var timeout = new Promise( function( resolve, reject ) {
-		setTimeout( reject, this._options.timeout );
-	}.bind( this ));
-	return Promise
-		.race([ call, timeout ])
+	var body = {
+		// context: _context,
+		userID: null,
+		userLatLon: null
+	};
+	return self
+		.emit('starting')
+		.then( function() {
+			return self._api.post( endpoint, body, config );
+		})
 		.then( function( res ) {
 			if ( !res.ok )
 				throw res;
 			return res.json();
 		})
 		.then( function( data ) {
-			return {
-				chatID: data.dialog_id,
-				message: this.parse( data.message )
-			};
-		}.bind( this ))['catch']( function( err ) {
-			this._options.onError( err, requestID );
-		}.bind( this ));
+			var chatID = data.dialog_id;
+			var message = data.message;
+			return self
+				.storage
+				.set( userID, '__chatID__', chatID )
+				.then( function() {
+					return self.emit('started', chatID );
+				})
+				.then( function() {
+					return self.emit('raw', data );
+				})
+				.then( function() {
+					return self.parse( userID, message ).then( function( parsed ) {
+						return self.emit('response', {
+							chatID: chatID,
+							message: parsed
+						});
+					});
+				});
+		})
+		.catch( function( err ) {
+			if ( err == API.ERRTMOUT )
+				self.emit('timeout', err, requestID );
+			else
+				self.emit('error', err, requestID );
+			throw err;
+		});
 };
 
-SDK.prototype.send = function( agentID, botID, chatID, message, context, user ) {
-	var endpoint = '/bots/'+ botID +'/dialogs/'+ chatID +'/messages';
+SDK.prototype.send = function( userID, message, context ) {
+	var self = this;
+	var _context = context === undefined ? {} : context;
+	var agentID = self._options.agentID;
 	var requestID = API.uuid();
-	var config = { 'headers': { 'X-Request-ID': requestID } };
-	var data = {
-		context: context,
+	var config = {
+		'headers': { 'X-Request-ID': requestID },
+		'timeout': self._options.timeout
+	};
+	var body = {
+		context: _context,
 		message: message,
-		userID: user.id,
-		userLatLon: user.location
+		userID: null,
+		userLatLon: null
 	};
-	var call = this._api.post( endpoint, data, config );
-	var timeout = new Promise( function( resolve, reject ) {
-		setTimeout( reject, this._options.timeout );
-	}.bind( this ));
-	return Promise
-		.race([ call, timeout ])
+	return self
+		.emit('sending')
+		.then( function() {
+			return self._options.preprocess( body );
+		})
+		.then( function( req ) {
+			return self
+				.emit('request', req )
+				.then( function() {
+					return self.storage.get( userID, '__chatID__');
+				})
+				.then( function( chatID ) {
+					var endpoint = '/bots/'+ agentID +'/dialogs/'+ chatID +'/messages';
+					return self._api.post( endpoint, req, config );
+				});
+		})
 		.then( function( res ) {
 			if ( !res.ok )
 				throw res;
 			return res.json();
 		})
 		.then( function( data ) {
-			return {
-				message: this.parse( data.message )
-			};
-		}.bind( this ))['catch']( function( err ) {
-			this._options.onError( err, requestID );
-		}.bind( this ));
+			return self.emit('raw', data );
+		})
+		.then( function( data ) {
+			return self.parse( userID, data.message ).then( function( parsed ) {
+				return self.emit('response', {
+					message: parsed
+				});
+			});
+		})
+		.catch( function( err ) {
+			var errEvent = ( err == API.ERRTMOUT ) ? 'timeout' : 'error';
+			return self.emit( errEvent, err, requestID ).then( function() {
+				throw err;
+			});
+		});
 };
 
-SDK.prototype.parse = function( msg ) {
-	var message = ( typeof msg === 'string' ) ? msg : JSON.stringify( msg );
-	var matches = ( message.match( PROFILE_REGEX ) || [] );
-	var flattened = matches.reduce( function( result, match ) {
+SDK.prototype.parse = function( userID, msg ) {
+	var self = this;
+	var isString = ( typeof msg === 'string' );
+	var msgString = isString ? msg : JSON.stringify( msg );
+	var matches = ( msgString.match( PROFILE_REGEX ) || [] );
+	var storeCalls = matches.map( match => {
 		var name = match.slice( 2, -1 );
-		var value = this.storage.get( name ) || name;
-		return result.replace( match, value );
-	}.bind( this ), message );
-	return ( typeof msg === 'string' ) ? flattened : JSON.parse( flattened );
+		return self.storage.get( userID, name, name );
+	});
+	return Promise.all( storeCalls ).then( function( values ) {
+		var flattened = matches.reduce( function( result, match, index ) {
+			var value = values[ index ];
+			return result.replace( match, value );
+		}, msgString );
+		var message = isString ? flattened : JSON.parse( flattened );
+		return message;
+	});
 };
 
-exports.create = function( config ) {
-	var options = Object.assign({ }, DEFAULTS, config );
-	return new SDK( options );
+SDK.prototype.generate = function( output ) {
+	return {
+		message: {
+			text: output
+		}
+	};
 };
 
+exports.SDK = SDK;
+exports.Storage = Storage;
 exports.MemoryStorage = MemoryStorage;
