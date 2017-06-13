@@ -46,7 +46,6 @@ module.exports = {
 	target: 'web',
 	entry: {
 		'web': [
-			'isomorphic-fetch',
 			'es6-promise/auto',
 			'es6-object-assign/auto',
 			paths.entry
@@ -62,11 +61,12 @@ module.exports = {
 	},
 	module: {
 		rules: [
-			{	enforce: 'pre',
+			...( isLocal ? [{
+				enforce: 'pre',
 				test: /\.js$/,
 				loader: 'eslint-loader',
 				exclude: /node_modules/
-			}
+			}] : [])
 		]
 	},
 	plugins: [

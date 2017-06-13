@@ -12,7 +12,7 @@
     "build-node": "webpack --config ./config/node.js",
     "watch-web": "webpack --config ./config/web.js --watch",
     "watch-node": "webpack --config ./config/node.js --watch",
-    "prepublish": "npm run build",
+    "prepublishOnly": "npm run build",
     "test": "echo \"No Tests\""
   },
   "keywords": [

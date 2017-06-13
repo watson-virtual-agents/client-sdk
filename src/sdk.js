@@ -162,7 +162,7 @@ SDK.prototype.parse = function( userID, msg ) {
 	var isString = ( typeof msg === 'string' );
 	var msgString = isString ? msg : JSON.stringify( msg );
 	var matches = ( msgString.match( PROFILE_REGEX ) || [] );
-	var storeCalls = matches.map( match => {
+	var storeCalls = matches.map( function( match ) {
 		var name = match.slice( 2, -1 );
 		return self.storage.get( userID, name, name );
 	});

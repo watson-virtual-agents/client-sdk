@@ -14,6 +14,8 @@
 * the License.
 */
 
+var fetch = require('isomorphic-fetch');
+
 exports.ERRTMOUT = { code: 500, status: 500, statusText: 'Timeout' };
 
 exports.create = function( baseURL, defaults ) {

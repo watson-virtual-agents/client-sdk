@@ -14,6 +14,7 @@
 * the License.
 */
 
+const FileSystem = require('fs');
 const Path = require('path');
 const Webpack = require('webpack');
 
@@ -36,8 +37,25 @@ const root = Path.resolve( __dirname, '..');
 const paths = {
 	'source': Path.join( root, 'src'),
 	'entry': Path.join( root, 'src', 'sdk.js'),
+	'modules': Path.join( root, 'node_modules'),
 	'output': Path.join( root, 'lib')
 };
+
+const externalModules = FileSystem
+	.readdirSync( paths.modules )
+	.reduce(( modules, module )=> {
+		if ( module !== '.bin' )
+			modules[module] = true
+		return modules;
+	}, {});
+const externalModulesTransform = ( context, request, callback )=> {
+	// Match for root modules that are in our node_modules
+	if ( externalModules.hasOwnProperty( request ))
+		callback( null, `commonjs ${request}`);
+	else
+		callback();
+};
+
 
 module.exports = {
 	bail: !isLocal,
@@ -46,7 +64,6 @@ module.exports = {
 	target: 'node',
 	entry: {
 		'node': [
-			'isomorphic-fetch',
 			paths.entry
 		]
 	},
@@ -58,13 +75,15 @@ module.exports = {
 		library: 'SDK',
 		libraryTarget: 'commonjs2'
 	},
+	externals: externalModulesTransform,
 	module: {
 		rules: [
-			{	enforce: 'pre',
+			...( isLocal ? [{
+				enforce: 'pre',
 				test: /\.js$/,
 				loader: 'eslint-loader',
 				exclude: /node_modules/
-			}
+			}] : [])
 		]
 	},
 	plugins: [
