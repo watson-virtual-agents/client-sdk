@@ -83,13 +83,11 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 		
 		const startChat = async ()=> {
 			// Start a WVA Chat
-			console.log( 2 );
 			const response = await wva.start( userID, { balance: 41.25 });
 			onResponse( response );
 		};
 		
 		const processInput = async ()=> {
-			console.log( 3 );
 			// If User Input Is Empty, Send Last Response
 			if ( message === '%__start__%' ) {
 				const lastMessages = await wva.storage.get( userID, '__last__', 'Hello <Figure This Out>');
@@ -99,11 +97,9 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 			}
 			
 			// Process User Input
-			console.log( 4 );
 			const mode = await wva.storage.get( userID, '__mode__');
 			
 			// If User Input Is 'agent', ~connect to agent~ (display nonsense).
-			console.log( 5 );
 			if ( mode !== 'storing' && message.toLowerCase() === 'agent' ) {
 				const response = wva.generate([
 					'Connecting to Agent...',
@@ -115,7 +111,6 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 			}
 			
 			// If User Input Is NOT a Command, Send To WVA
-			console.log( 6 );
 			if ( mode !== 'storing' ) {
 				const response = await wva.send( userID, message/*, context */);
 				onResponse( response );
@@ -176,7 +171,6 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 		
 		const onResponse = async ( response )=> {
 			// Handle Response
-			console.log( 3 );
 			const action = response.message.action;
 			if ( action ) {
 				// Perform Logic Based on Action
@@ -214,7 +208,6 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 		};
 		
 		const sendResponse = async ( response )=> {
-			console.log( response );
 			const message = response.message;
 			const layout = message.layout;
 			if ( layout ) {
@@ -282,7 +275,6 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 		};
 		
 		// Start a New Chat, or Process Continuing Input
-		console.log( 1 );
 		if ( !chatID )
 			startChat();
 		else
