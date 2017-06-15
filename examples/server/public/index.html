@@ -2,68 +2,7 @@
 <html>
 	<head>
 		<title>WVA Client SDK - Server Example</title>
-		<style>
-			* { box-sizing: border-box; }
-			html, body {
-				font-family: Arial;
-			}
-			h3 {
-				text-align: center;
-			}
-			div.container {
-				width: 400px;
-				margin: 0 auto;
-			}
-			div.messages {
-				width: 400px;
-				height: 500px;
-				margin-bottom: 10px;
-				border: 1px solid rgba( 0, 0, 0, 0.1 );
-				border-radius: 3px;
-				overflow-x: auto;
-				overflow-y: scroll;
-			}
-			div.messages div.placeholder {
-				width: 200px;
-				margin: 100px auto;
-				text-align: center;
-				font-size: small;
-				font-style: italic;
-			}
-			div.messages div.message {
-				padding: 5px 50px 12px 8px;
-				font-size: small;
-				white-space: pre-wrap;
-			}
-			div.messages div.message.user {
-				padding: 5px 8px 12px 50px;
-				text-align: right;
-				color: green;
-			}
-			div.controls, div.login {
-				width: 400px;
-			}
-			div.controls input[type=text], div.login input[type=text] {
-				width: 315px;
-				padding: 5px 3px;
-				margin-right: 5px;
-				border: 1px solid rgba( 0, 0, 0, 0.1 );
-				border-radius: 3px;
-			}
-			div.controls input[type=submit], div.login input[type=submit] {
-				width: 75px;
-				padding: 5px 3px;
-				border: 0;
-				border-radius: 3px;
-				color: white;
-				background: rgba( 128, 200, 255, 1.0 );
-			}
-			div.alert {
-				color: maroon;
-				font-size: small;
-				padding: 5px 3px;
-			}
-		</style>
+		<link rel="stylesheet" href="./index.css" />
 		<script>
 			document.addEventListener('DOMContentLoaded', ()=> {
 				console.log('Hi, Developer!');
@@ -72,8 +11,8 @@
 				
 				const messages = document.querySelector('div.messages');
 				const loginControls = document.querySelector('div.login');
-				const userID = document.getElementById('user-id');
-				const userSubmit = document.getElementById('user-submit');
+				const loginID = document.getElementById('login-id');
+				const loginSubmit = document.getElementById('login-submit');
 				const chatControls = document.querySelector('div.controls');
 				const chatInput = document.getElementById('chat-input');
 				const chatSubmit = document.getElementById('chat-submit');
@@ -127,15 +66,15 @@
 				};
 				
 				// Login Enter Handler
-				userID.addEventListener('keypress', evt => {
+				loginID.addEventListener('keypress', evt => {
 					if ( evt.keyCode === 13 )
-						userSubmit.click();
+						loginSubmit.click();
 				});
 				
 				// Register Login Submit Handler
-				userSubmit.addEventListener('click', evt => {
+				loginSubmit.addEventListener('click', evt => {
 					evt.preventDefault();
-					user = { 'id': userID.value };
+					user = { 'id': loginID.value };
 					messages.innerHTML = '';
 					loginControls.style.display = 'none';
 					chatControls.style.display = 'block';
@@ -169,8 +108,8 @@
 				</div>
 			</div>
 			<div class="login">
-				<input id="user-id" type="text" placeholder="Username..." />
-				<input id="user-submit" type="submit" value="Login" />
+				<input id="login-id" type="text" placeholder="Username..." />
+				<input id="login-submit" type="submit" value="Login" />
 			</div>
 			<div class="controls" style="display: none;">
 				<input id="chat-input" type="text" placeholder="Response..." />

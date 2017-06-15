@@ -5,41 +5,51 @@ const Express = require('express');
 const Path = require('path');
 const WVA = require('../../lib/node'); // require('@watson-virtual-agent/client-sdk');
 // const RedisStorage = require('@watson-virtual-agent/redis-storage');
+// TODO: Create a Redis Storage connector for distributed servers.
+
+const {
+	BASE_URL = 'https://api.ibm.com/virtualagent/run/api/v1',
+	DEBUG = false,
+	PORT = 1337,
+	WVA_AGENT_ID,
+	WVA_CLIENT_ID,
+	WVA_CLIENT_SECRET
+} = process.env;
 
 // Mock services
-const Pay = require('./services/pay');
 const Geo = require('./services/geo');
+const Pay = require('./services/pay');
+const User = require('./services/user');
 
 const app = Express();
 const server = HTTP.createServer( app );
 const wva = new WVA.SDK({
-	// baseURL: 'https://dev.api.ibm.com/virtualagent/development/api/v1/',
-	agentID: '18021dd8-498d-4cf5-ab65-3a22fd1c02f2',//process.env.WVA_AGENT_ID,
-	clientID: '40933a4e-cb47-4c4e-b38b-af3f6546ca3e',//process.env.WVA_CLIENT_ID,
-	clientSecret: 'I0hT6tL6lT7yD0tX8nL8xN0tH7qK7eS5lU8yF8fD5kU1vG8cX0'//process.env.WVA_CLIENT_SECRET
+	baseURL: BASE_URL,
+	agentID: WVA_AGENT_ID,
+	clientID: WVA_CLIENT_ID,
+	clientSecret: WVA_CLIENT_SECRET
 }/*, new RedisStorage() */);
 
-wva.subscribeAll({
-	'starting': async ()=> {
+DEBUG && wva.subscribeAll({
+	'starting': ()=> {
 		console.log('Starting...');
 	},
-	'started': async chatID => {
+	'started': chatID => {
 		console.log('Started: ', chatID );
 	},
-	'sending': async ()=> {
+	'sending': ()=> {
 		console.log('Sending...');
 	},
-	'request': async req => {
+	'request': req => {
 		console.log('Request: ', req );
 	},
-	'raw': async body => {
+	'raw': body => {
 		console.log('Unparsed: ', body );
 	},
-	'response': async res => {
+	'response': res => {
 		console.log('Response: ', res );
-		console.log( res.message.inputvalidation );
 	},
-	'timeout': async err => {
+	'timeout': err => {
 		console.log('Timeout:', err );
 	},
 	'error': async err => {
@@ -52,6 +62,7 @@ wva.subscribeAll({
 	}
 });
 
+// Serve Client Files
 app.use( Express.static( Path.join( __dirname, 'public')));
 
 app.post('/chat', BodyParser.json(), async ( req, res )=> {
@@ -72,11 +83,13 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 		
 		const startChat = async ()=> {
 			// Start a WVA Chat
-			const response = await wva.start( userID );
+			console.log( 2 );
+			const response = await wva.start( userID, { balance: 41.25 });
 			onResponse( response );
 		};
 		
 		const processInput = async ()=> {
+			console.log( 3 );
 			// If User Input Is Empty, Send Last Response
 			if ( message === '%__start__%' ) {
 				const lastMessages = await wva.storage.get( userID, '__last__', 'Hello <Figure This Out>');
@@ -86,9 +99,11 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 			}
 			
 			// Process User Input
+			console.log( 4 );
 			const mode = await wva.storage.get( userID, '__mode__');
 			
 			// If User Input Is 'agent', ~connect to agent~ (display nonsense).
+			console.log( 5 );
 			if ( mode !== 'storing' && message.toLowerCase() === 'agent' ) {
 				const response = wva.generate([
 					'Connecting to Agent...',
@@ -100,6 +115,7 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 			}
 			
 			// If User Input Is NOT a Command, Send To WVA
+			console.log( 6 );
 			if ( mode !== 'storing' ) {
 				const response = await wva.send( userID, message/*, context */);
 				onResponse( response );
@@ -141,8 +157,8 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 				onResponse( response );
 				return;
 			}
+			// Save Input to Storage
 			const nextStep = step + 1;
-			// Validate
 			await wva.storage.set( userID, store[step].name, message );
 			if ( nextStep < store.length ) {
 				await wva.storage.set( userID, '__step__', nextStep );
@@ -150,6 +166,7 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 				onResponse( response );
 				return;
 			}
+			// Complete Storing Data
 			await wva.storage.clear( userID, '__mode__');
 			await wva.storage.clear( userID, '__step__');
 			await wva.storage.clear( userID, '__store__');
@@ -159,8 +176,10 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 		
 		const onResponse = async ( response )=> {
 			// Handle Response
+			console.log( 3 );
 			const action = response.message.action;
 			if ( action ) {
+				// Perform Logic Based on Action
 				switch ( action.name ) {
 					case 'getUserProfileVariables':
 						actionGetProfile( userID );
@@ -177,6 +196,7 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 				}
 			}
 			if ( response.message.store ) {
+				// Change User Into Storing Mode
 				const store = response.message.store;
 				await wva.storage.set( userID, '__store__', store );
 				await wva.storage.set( userID, '__step__', 0 );
@@ -189,13 +209,16 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 				sendResponse( input );
 				return;
 			}
+			// Send Response to User
 			sendResponse( response );
 		};
 		
 		const sendResponse = async ( response )=> {
+			console.log( response );
 			const message = response.message;
 			const layout = message.layout;
 			if ( layout ) {
+				// Modify Response Message Based on Layouts Supported
 				switch ( layout.name ) {
 					case 'choose':
 					case 'confirm':
@@ -215,20 +238,26 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 						break;
 				}
 			}
+			// Save the Last Response if Chat Was Reloaded.
 			await wva.storage.set( userID, '__last__', message.text );
 			res.status( 200 );
 			res.json( response.message );
 		};
 		
 		const actionGetProfile = ( userID )=> {
-			return wva.storage.set( userID, 'bill_amount', 42.15 )
-				.then(()=> wva.storage.set( userID, 'payment_due_date', '01/01/2999'))
+			// Logic for 'getUserProfileVariables'
+			return User.find( userID )
+				.then( userData => Promise.all([
+					wva.storage.set( userID, 'bill_amount', userData['bill_amount']),
+					wva.storage.set( userID, 'payment_due_date', userData['payment_due_date'])
+				]))
 				.then(()=> wva.send( userID, 'success'))
 				.catch( err => wva.send( userID, 'failure'))
 				.then( onResponse );
 		};
 		
 		const actionPayBill = ( userID )=> {
+			// Logic for 'payBill'
 			return wva.storage
 				.getKeys( userID, ['cc_number', 'cc_full_name', 'cc_exp_date', 'cc_code'])
 				.then( ccData => Pay.send( userID, ccData ))
@@ -239,6 +268,7 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 		};
 		
 		const actionGetLocation = ( userID )=> {
+			// Logic for 'getLocation'
 			return Geo.find( userID )
 				.then( result => wva.storage.set( userID, 'location', result.coords ))
 				.then(()=> wva.send( userID, 'success'))
@@ -247,15 +277,19 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 		};
 		
 		const actionDefault = ( userID )=> {
+			// Ignore Unhandled Actions.
 			return wva.send( userID, 'success').then( onResponse );
 		};
 		
+		// Start a New Chat, or Process Continuing Input
+		console.log( 1 );
 		if ( !chatID )
 			startChat();
 		else
 			processInput();
 	}
 	catch ( err ) {
+		// Something Broke.  Add Error Handling Here.
 		console.error( err );
 		if ( err )
 			res.status( err.status ).send( err.message );
@@ -263,15 +297,17 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 			res.status( 500 ).send('Internal Server Error.');
 	}
 	finally {
+		// Always Remove the Processing Flag from the User Storage
 		await wva.storage.clear( userID, '__processing__');
 	}
 });
 
 app.use(( req, res )=> {
+	// Catch-All 404
 	res.status( 404 );
 	res.end();
 });
 
-server.listen( process.env.PORT || 1337, ()=> {
+server.listen( PORT, ()=> {
 	console.log(`Server listening on port ${server.address().port}`);
 });

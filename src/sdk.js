@@ -19,14 +19,16 @@ var FlowEmitter = require('./flow-emitter');
 var Storage = require('./storage');
 var MemoryStorage = require('./storage/memory');
 
+var IDENTITY = function( o ) { return o; };
 var PROFILE_REGEX = /\|&(.*?)\|/g;
 var DEFAULTS = {
 	agentID: null,
 	baseURL: 'https://api.ibm.com/virtualagent/run/api/v1',
 	clientID: false,
 	clientSecret: false,
+	context: {},
 	credentials: 'same-origin',
-	preprocess: function( o ) { return o; },
+	preprocess: IDENTITY,
 	timeout: 30 * 1000
 };
 
@@ -48,10 +50,10 @@ function SDK( config, storage ) {
 SDK.prototype = Object.create( FlowEmitter.prototype );
 SDK.prototype.constructor = SDK;
 
-SDK.prototype.start = function( userID/*, context*/ ) {
+SDK.prototype.start = function( userID, context ) {
 	var self = this;
-	// var _context = context === undefined ? {} : context;
 	var agentID = self._options.agentID;
+	var _context = context === undefined ? {} : context;
 	var endpoint = '/bots/'+ agentID +'/dialogs';
 	var requestID = API.uuid();
 	var config = {
@@ -59,9 +61,9 @@ SDK.prototype.start = function( userID/*, context*/ ) {
 		'timeout': self._options.timeout
 	};
 	var body = {
-		// context: _context,
-		userID: null,
-		userLatLon: null
+		userID: userID,
+		context: _context,
+		userLatLon: _context.userLatLon
 	};
 	return self
 		.emit('starting')
@@ -93,8 +95,7 @@ SDK.prototype.start = function( userID/*, context*/ ) {
 						});
 					});
 				});
-		})
-		.catch( function( err ) {
+		})['catch']( function( err ) {
 			if ( err == API.ERRTMOUT )
 				self.emit('timeout', err, requestID );
 			else
@@ -113,10 +114,10 @@ SDK.prototype.send = function( userID, message, context ) {
 		'timeout': self._options.timeout
 	};
 	var body = {
+		userID: userID,
 		context: _context,
 		message: message,
-		userID: null,
-		userLatLon: null
+		userLatLon: _context.userLatLon
 	};
 	return self
 		.emit('sending')
@@ -148,8 +149,7 @@ SDK.prototype.send = function( userID, message, context ) {
 					message: parsed
 				});
 			});
-		})
-		.catch( function( err ) {
+		})['catch']( function( err ) {
 			var errEvent = ( err == API.ERRTMOUT ) ? 'timeout' : 'error';
 			return self.emit( errEvent, err, requestID ).then( function() {
 				throw err;
@@ -179,7 +179,10 @@ SDK.prototype.parse = function( userID, msg ) {
 SDK.prototype.generate = function( output ) {
 	return {
 		message: {
-			text: output
+			text: output,
+			output: { // TODO: Remove duplicated properties from API
+				text: output
+			}
 		}
 	};
 };
