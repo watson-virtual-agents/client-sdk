@@ -17,6 +17,7 @@ that provides requests and responses for a simple, text-only interface.
 
 ```
 cd examples/server
+npm install
 node app
 ```
 
