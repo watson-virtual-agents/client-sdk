@@ -8,7 +8,7 @@ const WVA = require('../../lib/node'); // require('@watson-virtual-agent/client-
 // TODO: Create a Redis Storage connector for distributed servers.
 
 const {
-	BASE_URL = 'https://api.ibm.com/virtualagent/run/api/v1',
+	BASE_URL = 'https://api.ibm.com/virtualagent/run/api/v2',
 	DEBUG = false,
 	PORT = 1337,
 	WVA_AGENT_ID,
@@ -69,14 +69,14 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 	const { userID, message } = req.body;
 	try {
 		// Get ChatID and Processing Flag from WVA SDK
-		const chatID = await wva.storage.get( userID, '__chatID__', null );
+		const convID = await wva.storage.get( userID, '__conversationID__', null );
 		const isProcessing = await wva.storage.get( userID, '__processing__', false );
 		
 		// If Processing Flag is set, do not process new input.  Set Flag.
 		if ( isProcessing ) {
 			const response = wva.generate(['The Agent is still typing...']);
 			res.status( 409 );
-			res.json( response.message );
+			res.json( response );
 			return;
 		}
 		await wva.storage.set( userID, '__processing__', true );
@@ -171,7 +171,7 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 		
 		const onResponse = async ( response )=> {
 			// Handle Response
-			const action = response.message.action;
+			const action = response.action;
 			if ( action ) {
 				// Perform Logic Based on Action
 				switch ( action.name ) {
@@ -189,9 +189,9 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 						return;
 				}
 			}
-			if ( response.message.store ) {
+			if ( response.output.store ) {
 				// Change User Into Storing Mode
-				const store = response.message.store;
+				const store = response.output.store;
 				await wva.storage.set( userID, '__store__', store );
 				await wva.storage.set( userID, '__step__', 0 );
 				await wva.storage.set( userID, '__mode__', 'storing');
@@ -208,33 +208,36 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 		};
 		
 		const sendResponse = async ( response )=> {
-			const message = response.message;
-			const layout = message.layout;
-			if ( layout ) {
-				// Modify Response Message Based on Layouts Supported
-				switch ( layout.name ) {
-					case 'choose':
-					case 'confirm':
-						message.text.push('Please type one of the following:');
-						message.inputvalidation.oneOf.forEach( option => {
-							message.text.push(`- ${option}`)
-						});
-						break;
-					case 'choose-location-type':
-						wva.send( userID, 'zipcode').then( onResponse );
-						return;
-					case 'show-locations':
-						message.data.location_data.forEach(( location, index )=> {
-							message.text.splice( 1 + ( index * 2 ), 0, `${index + 1}. ${location.label}\n`);
-							message.text.splice( 2 + ( index * 2 ), 0, `  ${location.address.address}\n\n`);
-						});
-						break;
+			const channel = response.output.channel;
+			if ( channel && channel.layout ) {
+				const inputvalidation = channel.inputvalidation;
+				const layout = channel.layout;
+				if ( layout ) {
+					// Modify Response Message Based on Layouts Supported
+					switch ( layout.name ) {
+						case 'choose':
+						case 'confirm':
+							response.output.text.push('Please type one of the following:');
+							inputvalidation.oneOf.forEach( option => {
+								response.output.text.push(`- ${option}`)
+							});
+							break;
+						case 'choose-location-type':
+							wva.send( userID, 'zipcode').then( onResponse );
+							return;
+						case 'show-locations':
+							response.context.system.branch_exited_additional_info.location_data.forEach(( location, index )=> {
+								response.output.text.splice( 1 + ( index * 2 ), 0, `${index + 1}. ${location.label}\n`);
+								response.output.text.splice( 2 + ( index * 2 ), 0, `  ${location.address.address}\n\n`);
+							});
+							break;
+					}
 				}
 			}
 			// Save the Last Response if Chat Was Reloaded.
-			await wva.storage.set( userID, '__last__', message.text );
+			await wva.storage.set( userID, '__last__', response.output.text );
 			res.status( 200 );
-			res.json( response.message );
+			res.json( response );
 		};
 		
 		const actionGetProfile = ( userID )=> {
@@ -275,7 +278,7 @@ app.post('/chat', BodyParser.json(), async ( req, res )=> {
 		};
 		
 		// Start a New Chat, or Process Continuing Input
-		if ( !chatID )
+		if ( !convID )
 			startChat();
 		else
 			processInput();

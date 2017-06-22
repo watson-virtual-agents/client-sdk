@@ -49,8 +49,7 @@
 							return res.json();
 						})
 						.then( body => {
-							console.log( body );
-							body.text.forEach( message => {
+							body.output.text.forEach( message => {
 								addMessage( message );
 							});
 						})

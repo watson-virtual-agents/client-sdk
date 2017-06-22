@@ -23,7 +23,7 @@ var IDENTITY = function( o ) { return o; };
 var PROFILE_REGEX = /\|&(.*?)\|/g;
 var DEFAULTS = {
 	agentID: null,
-	baseURL: 'https://api.ibm.com/virtualagent/run/api/v1',
+	baseURL: 'https://api.ibm.com/virtualagent/run/api/v2',
 	clientID: false,
 	clientSecret: false,
 	context: {},
@@ -54,16 +54,15 @@ SDK.prototype.start = function( userID, context ) {
 	var self = this;
 	var agentID = self._options.agentID;
 	var _context = context === undefined ? {} : context;
-	var endpoint = '/bots/'+ agentID +'/dialogs';
+	var endpoint = '/bots/'+ agentID +'/messages';
 	var requestID = API.uuid();
 	var config = {
 		'headers': { 'X-Request-ID': requestID },
 		'timeout': self._options.timeout
 	};
 	var body = {
-		userID: userID,
-		context: _context,
-		userLatLon: _context.userLatLon
+		input: { text: "" },
+		context: _context
 	};
 	return self
 		.emit('starting')
@@ -75,27 +74,25 @@ SDK.prototype.start = function( userID, context ) {
 				throw res;
 			return res.json();
 		})
-		.then( function( data ) {
-			var chatID = data.dialog_id;
-			var message = data.message;
+		.then( function( message ) {
+			var conversationID = message.context['conversation_id'];
 			return self
 				.storage
-				.set( userID, '__chatID__', chatID )
+				.set( userID, '__conversationID__', conversationID )
 				.then( function() {
-					return self.emit('started', chatID );
+					return self.emit('started', message.context );
 				})
 				.then( function() {
-					return self.emit('raw', data );
+					return self.emit('raw', message );
 				})
 				.then( function() {
-					return self.parse( userID, message ).then( function( parsed ) {
-						return self.emit('response', {
-							chatID: chatID,
-							message: parsed
-						});
-					});
+					return self.parse( userID, message );
+				})
+				.then( function( parsed ) {
+					return self.emit('response', parsed );
 				});
 		})['catch']( function( err ) {
+			console.error( err );
 			if ( err == API.ERRTMOUT )
 				self.emit('timeout', err, requestID );
 			else
@@ -113,42 +110,42 @@ SDK.prototype.send = function( userID, message, context ) {
 		'headers': { 'X-Request-ID': requestID },
 		'timeout': self._options.timeout
 	};
-	var body = {
-		userID: userID,
-		context: _context,
-		message: message,
-		userLatLon: _context.userLatLon
-	};
 	return self
-		.emit('sending')
-		.then( function() {
+		.storage
+		.get( userID, '__conversationID__', null )
+		.then( function( conversationID ) {
+			return self.emit('sending', {
+				input: {
+					text: message
+				},
+				context: Object.assign({}, {
+					'conversation_id': conversationID
+				}, _context )
+			});
+		})
+		.then( function( body ) {
 			return self._options.preprocess( body );
 		})
 		.then( function( req ) {
-			return self
-				.emit('request', req )
-				.then( function() {
-					return self.storage.get( userID, '__chatID__');
-				})
-				.then( function( chatID ) {
-					var endpoint = '/bots/'+ agentID +'/dialogs/'+ chatID +'/messages';
-					return self._api.post( endpoint, req, config );
-				});
+			return self.emit('request', req );
+		})
+		.then( function( req ) {
+			var endpoint = '/bots/'+ agentID +'/messages';
+			return self._api.post( endpoint, req, config );
 		})
 		.then( function( res ) {
 			if ( !res.ok )
 				throw res;
 			return res.json();
 		})
-		.then( function( data ) {
-			return self.emit('raw', data );
+		.then( function( message ) {
+			return self.emit('raw', message );
 		})
-		.then( function( data ) {
-			return self.parse( userID, data.message ).then( function( parsed ) {
-				return self.emit('response', {
-					message: parsed
-				});
-			});
+		.then( function( message ) {
+			return self.parse( userID, message );
+		})
+		.then( function( parsed ) {
+			return self.emit('response', parsed );
 		})['catch']( function( err ) {
 			var errEvent = ( err == API.ERRTMOUT ) ? 'timeout' : 'error';
 			return self.emit( errEvent, err, requestID ).then( function() {
@@ -178,11 +175,8 @@ SDK.prototype.parse = function( userID, msg ) {
 
 SDK.prototype.generate = function( output ) {
 	return {
-		message: {
-			text: output,
-			output: { // TODO: Remove duplicated properties from API
-				text: output
-			}
+		output: {
+			text: output
 		}
 	};
 };
