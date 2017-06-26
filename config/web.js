@@ -14,72 +14,93 @@
 * the License.
 */
 
-const path = require('path');
+const Path = require('path');
 const Webpack = require('webpack');
 
-const { NoErrorsPlugin } = Webpack;
+const { name, version } = require('../package.json');
+
 const {
-	DedupePlugin,
-	UglifyJsPlugin,
-	OccurenceOrderPlugin } = Webpack.optimize;
+	LoaderOptionsPlugin,
+	NamedModulesPlugin,
+	NoEmitOnErrorsPlugin,
+	optimize: {
+		UglifyJsPlugin
+	}
+} = Webpack;
+const { NODE_ENV = 'local' } = process.env;
 
-const pkg = require('../package.json');
-const env = process.env.NODE_ENV || 'development';
-const debug = ( env === 'development' );
+const isLocal = ( NODE_ENV === 'local' );
+const isProduction = ( NODE_ENV === 'production' );
 
+const root = Path.resolve( __dirname, '..');
 const paths = {
-	'context': path.resolve( __dirname, '..'),
-	'entry': path.resolve( __dirname, '..', 'src', 'sdk.js'),
-	'output': path.resolve( __dirname, '..', 'lib')
+	'source': Path.join( root, 'src'),
+	'entry': Path.join( root, 'src', 'sdk.js'),
+	'output': Path.join( root, 'lib')
 };
 
-const postplugins = !debug
-	? [ new DedupePlugin(),
-		new UglifyJsPlugin({ mangle: true, sourcemap: false }) ]
-	: [ new NoErrorsPlugin() ];
-
-module.exports = [
-	{
-		name: 'web',
-		target: 'web',
-		
-		debug: debug,
-		cache: debug,
-		devtool: debug ? 'inline-sourcemap' : null,
-		stats: { colors: true },
-		node: {
-			__filename: true,
-			__dirname: true
-		},
-		resolve: {
-			extensions: ['', '.js']
-		},
-		
-		env: env,
-		context: paths.context,
-		entry: { 'web': [ paths.entry ] },
-		output: {
-			path: paths.output,
-			filename: '[name].js',
-			library: 'SDK',
-			libraryTarget: 'umd',
-			umdNamedDefine: true
-		},
-		module: {
-			preLoaders: [ {
-				loader: 'eslint',
-				test: /\.js$/,
-				exclude: /node_modules/
-			} ],
-			loaders: [
-				{	loader: 'json',
-					test: /\.json$/
-				}
-			]
-		},
-		plugins: [
-			new OccurenceOrderPlugin( true ),
-			...postplugins
+module.exports = {
+	bail: !isLocal,
+	devtool: isProduction ? false : 'eval-source-map',
+	context: paths.source,
+	target: 'web',
+	entry: {
+		'web': [
+			'es6-promise/auto',
+			'es6-object-assign/auto',
+			paths.entry
 		]
-	}
-];
+	},
+	output: {
+		filename: '[name].js',
+		chunkFilename: '[name]-[id].js',
+		path: paths.output,
+		library: 'SDK',
+		libraryTarget: 'umd',
+		umdNamedDefine: true
+	},
+	module: {
+		rules: [
+			...( isLocal ? [{
+				enforce: 'pre',
+				test: /\.js$/,
+				loader: 'eslint-loader',
+				exclude: /node_modules/
+			}] : [])
+		]
+	},
+	plugins: [
+		...( !isLocal ? [
+			new LoaderOptionsPlugin({
+				minimize: true,
+				debug: false
+			}),
+			new UglifyJsPlugin({
+				'sourceMap': true,
+				'compressor': {
+					'warnings': false,
+					'screw_ie8': true,
+					'conditionals': true,
+					'unused': true,
+					'comparisons': true,
+					'sequences': true,
+					'dead_code': true,
+					'evaluate': true,
+					'if_return': true,
+					'join_vars': true
+				},
+				'mangle': {
+					'screw_ie8': true
+				},
+				'output': {
+					'comments': false,
+					'screw_ie8': true
+				}
+			})
+		] : []),
+		...( isLocal ? [
+			new NamedModulesPlugin(),
+			new NoEmitOnErrorsPlugin()
+		] : [])
+	]
+};

@@ -14,234 +14,173 @@
 * the License.
 */
 
-if ( typeof Promise === 'undefined' ) require('es6-promise').polyfill();
+var API = require('./api');
+var FlowEmitter = require('./flow-emitter');
+var Storage = require('./storage');
+var MemoryStorage = require('./storage/memory');
 
-var assign = require('lodash.assign');
-var axios = require('axios');
-var storage = require('./storage');
-
-var options = {
-	baseURL: 'https://dev.api.ibm.com/virtualagent/development/api/v1/',
-	timeout: 30 * 1000,
-	userID: null,
-	withCredentials: false,
-	XIBMClientID: false,
-	XIBMClientSecret: false
+var IDENTITY = function( o ) { return o; };
+var PROFILE_REGEX = /\|&(.*?)\|/g;
+var DEFAULTS = {
+	agentID: null,
+	baseURL: 'https://api.ibm.com/virtualagent/run/api/v2',
+	clientID: false,
+	clientSecret: false,
+	context: {},
+	credentials: 'same-origin',
+	preprocess: IDENTITY,
+	timeout: 30 * 1000
 };
 
-var api = axios.create( options );
+function SDK( config, storage ) {
+	FlowEmitter.call( this );
+	var options = Object.assign({ }, DEFAULTS, config );
+	this.storage = storage || new MemoryStorage();
+	this._options = options;
+	this._api = API.create( options.baseURL, {
+		credentials: options.credentials,
+		timeout: options.timeout,
+		headers: ( options.clientID && options.clientSecret ) ? {
+			'X-IBM-Client-Id': options.clientID,
+			'X-IBM-Client-Secret': options.clientSecret
+		} : { }
+	});
+}
 
-var profileDataRe = /\|&(.*?)\|/g;
-var insertUserProfileData = function(msg) {
-	var flatten = (typeof msg === 'string') ? msg : JSON.stringify(msg);
-	var matches = (flatten.match(profileDataRe) || []);
-	flatten = matches.reduce(function(result, prof) {
-		const name = prof.slice( 2, -1 );
-		const value = storage.get(name) || name;
-		return result.replace( prof, value );
-	}, flatten);
-	return (typeof msg === 'string') ? flatten : JSON.parse(flatten);
-};
+SDK.prototype = Object.create( FlowEmitter.prototype );
+SDK.prototype.constructor = SDK;
 
-/**
- * @namespace SDK
- */
-
-var SDK = module.exports = {
-	/**
-	 * Configure the Client SDK
-	 * @function configure
-	 * @memberof SDK
-	 * @param {Object} config
-	 * @param {string} config.baseURL=https://dev.api.ibm.com/virtualagent/development/api/v1/ - Optional: The URL the SDK should prepend to requests.
-	 * @param {int} config.timeout=30000 - Optional: How long requests should wait before they error.
-	 * @param {string} config.userID - Optional: A user identifier, transformed by a one-way hashing algorithm. Used by your Metrics Dashboard to track usage.
-	 * @param {string} config.userLatLon - Optional: lat,lon or user ( eg. 28.3852,-81.5639 ). Used by your Metrics Dashboard to track usage.
-	 * @param {string} config.withCredentials - Optional: indicates whether or not cross-site Access-Control requests should be made using credentials
-	 * @param {string} config.XIBMClientID - Optional: Your X-IBM-Client-Id. This should not be made public in a public environment. Including this will add X-IBM-Client-Id as a header to your request.
-	 * @param {string} config.XIBMClientSecret - Optional: Your X-IBM-Client-Secret. This should not be made public in a public environment. Including this will add X-IBM-Client-Secret as a header to your request.
-	 * @example
-	 * SDK.configure({
-	 *   baseURL: 'https://server.mysite.com',
-	 *   userID: 'poiuytrewq',
-	 *   userLatLon: '28.3852,-81.5639'
-	 * });
-	 * @returns {SDK} Returns: The SDK singleton
-	 */
-	configure: function( config ) {
-		assign( options, config );
-		api = axios.create({
-			baseURL: options.baseURL,
-			timeout: options.timeout,
-			withCredentials: options.withCredentials,
-			headers: (options.XIBMClientID && options.XIBMClientSecret) ? {
-				'X-IBM-Client-Id': options.XIBMClientID,
-				'X-IBM-Client-Secret': options.XIBMClientSecret
-			} : {}
+SDK.prototype.start = function( userID, context ) {
+	var self = this;
+	var agentID = self._options.agentID;
+	var _context = context === undefined ? {} : context;
+	var endpoint = '/bots/'+ agentID +'/messages';
+	var requestID = API.uuid();
+	var config = {
+		'headers': { 'X-Request-ID': requestID },
+		'timeout': self._options.timeout
+	};
+	var body = {
+		input: { text: "" },
+		context: _context
+	};
+	return self
+		.emit('starting')
+		.then( function() {
+			return self._api.post( endpoint, body, config );
+		})
+		.then( function( res ) {
+			if ( !res.ok )
+				throw res;
+			return res.json();
+		})
+		.then( function( message ) {
+			var conversationID = message.context['conversation_id'];
+			return self
+				.storage
+				.set( userID, '__conversationID__', conversationID )
+				.then( function() {
+					return self.emit('started', message.context );
+				})
+				.then( function() {
+					return self.emit('raw', message );
+				})
+				.then( function() {
+					return self.parse( userID, message );
+				})
+				.then( function( parsed ) {
+					return self.emit('response', parsed );
+				});
+		})['catch']( function( err ) {
+			console.error( err );
+			if ( err == API.ERRTMOUT )
+				self.emit('timeout', err, requestID );
+			else
+				self.emit('error', err, requestID );
+			throw err;
 		});
-		return SDK;
-	},
-	/**
-	 * Start a new chat session
-	 * @function start
-	 * @memberof SDK
-	 * @param {string} botID - Your botID.
-	 * @example
-	 * SDK.start(botID)
-	 *    .then(function(res) {
-	 *      console.log(res.chatID, res.message);
-	 *    })
-	 *    .catch(function(err) {
-	 *      console.error(err);
-	 *    });
-	 * @returns {Promise({ chatID: "string", message: "string" })} Returns: A Promise that resolves when the chat session is started.
-	 */
-	start: function( botID ) {
-		var requestID = uuid();
-		var data = { userID: options.userID, userLatLon: options.userLatLon };
-		var endpoint = '/bots/'+ botID +'/dialogs';
-		var config = { 'headers': { 'X-Request-ID': requestID } };
-		return api
-			.post( endpoint, data, config )
-			.then( function( res ) {
-				return {
-					chatID: res.data.dialog_id,
-					message: insertUserProfileData(res.data.message)
-				};
-			})['catch']( function( err ) {
-				console.error('Request failed:', requestID );
-				onError( err );
-			});
-	},
-	/**
-	 * Send a message to a chat session
-	 * @function send
-	 * @memberof SDK
-	 * @param {string} botID - Your botID
-	 * @param {string} chatID - Your chatID provided by SDK.start
-	 * @param {string} message - Your message
-	 * @param {Object} context - (optional) Context variables to pass to your [Custom Workspaces](https://www.ibm.com/watson/developercloud/doc/conversation/dialog-build.html#context-variables)
-	 * @example
-	 * SDK.send(botID, chatID, 'Hello!')
-	 *    .then(function(data) {
-	 *      console.log(data.message);
-	 *    })
-	 *    .catch(function(err) {
-	 *      console.error(err);
-	 *    });
-	 * @returns {Promise({ message: "string" })} Returns: A Promise that resolves when the bot responds.
-	 */
-	send: function( botID, chatID, message, context ) {
-		var requestID = uuid();
-		var data = { message: message, userID: options.userID, userLatLon: options.userLatLon, context: context };
-		var endpoint = '/bots/'+ botID +'/dialogs/'+ chatID +'/messages';
-		var config = { 'headers': { 'X-Request-ID': requestID } };
-		return api
-			.post( endpoint, data, config )
-			.then( function( res ) {
-				return {
-					message: insertUserProfileData(res.data.message)
-				};
-			})['catch']( function( err ) {
-				console.error('Request failed:', requestID );
-				onError( err );
-			});
-	},
-	/**
-	* Iterate profile data into a given message object.
-	* @memberof SDK
-	* @function parse
-	* @param {Any} message - A string or message object to insert profile data into.
-	* @returns {Any} Returns: The message in original format with variables replaced.
-	* @example
-	* var message = "You owe |&bill_amount|.";
-	* var parsed = SDK.parse(message);
-	*/
-	parse: insertUserProfileData,
-	/**
-	 * @namespace profile
-	 * @memberof SDK
-	 */
-	profile: {
-		/**
-		* Get an item from the user profile based on key.
-		* @memberof SDK.profile
-		* @function get
-		* @param {string} key - The named key of the value you are accessing.
-		* @example
-		* SDK.profile.get('first_name');
-		* @returns {Any} Returns: the value of the key in the profile map.
-		*/
-		get: storage.get,
-		/**
-		* Set an item from the user profile based on key.
-		* @memberof SDK.profile
-		* @function set
-		* @param {string} key - The named key of the value you are setting.
-		* @param {string} value - The value you are setting.
-		* @returns {Object} Returns: An instance of SDK.profile for chaining.
-		* @example
-		* SDK.profile.set('first_name', 'john');
-		*/
-		set: storage.set,
-		/**
-		* See if an item from the user profile exists based on key.
-		* @memberof SDK.profile
-		* @function has
-		* @param {string} key - The named key of the value you are checking the existance of.
-		* @example
-		* SDK.profile.has('first_name');
-		* @returns {Boolean} Returns: Boolean indicating if the key exists.
-		*/
-		has: storage.has,
-		/**
-		* Clear the entire user profile.
-		* @memberof SDK.profile
-		* @function clear
-		* @returns {Object} Returns: An instance of SDK.profile for chaining.
-		* @example
-		* SDK.profile.clear();
-		*/
-		clear: storage.clear,
-		/**
-		* Delete an item from the user profile based on key.
-		* @memberof SDK.profile
-		* @function delete
-		* @returns {Object} Returns: An instance of SDK.profile for chaining.
-		* @param {string} key - The named key of the value you are deleting.
-		* @example
-		* SDK.profile.delete('first_name');
-		*/
-		delete: storage.delete,
-		/**
-		* Iterate over the profile.
-		* @memberof SDK.profile
-		* @function forEach
-		* @param {function} callback - The function you are calling on each item in the profile object. This function is passed key as the first argument and value as the second argument.
-		* @param {Object} this - (optional) The context you wish to call the callback in.
-		* @returns {Object} Returns: An instance of SDK.profile for chaining.
-		* @example
-		* SDK.profile.forEach(function(key, value) {
-		*   console.log(key, value);
-		* });
-		*/
-		forEach: storage.forEach
-	}
 };
 
-var uuid = function( ) {
-	return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-		var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-		return v.toString(16);
+SDK.prototype.send = function( userID, message, context ) {
+	var self = this;
+	var _context = context === undefined ? {} : context;
+	var agentID = self._options.agentID;
+	var requestID = API.uuid();
+	var config = {
+		'headers': { 'X-Request-ID': requestID },
+		'timeout': self._options.timeout
+	};
+	return self
+		.storage
+		.get( userID, '__conversationID__', null )
+		.then( function( conversationID ) {
+			return self.emit('sending', {
+				input: {
+					text: message
+				},
+				context: Object.assign({}, {
+					'conversation_id': conversationID
+				}, _context )
+			});
+		})
+		.then( function( body ) {
+			return self._options.preprocess( body );
+		})
+		.then( function( req ) {
+			return self.emit('request', req );
+		})
+		.then( function( req ) {
+			var endpoint = '/bots/'+ agentID +'/messages';
+			return self._api.post( endpoint, req, config );
+		})
+		.then( function( res ) {
+			if ( !res.ok )
+				throw res;
+			return res.json();
+		})
+		.then( function( message ) {
+			return self.emit('raw', message );
+		})
+		.then( function( message ) {
+			return self.parse( userID, message );
+		})
+		.then( function( parsed ) {
+			return self.emit('response', parsed );
+		})['catch']( function( err ) {
+			var errEvent = ( err == API.ERRTMOUT ) ? 'timeout' : 'error';
+			return self.emit( errEvent, err, requestID ).then( function() {
+				throw err;
+			});
+		});
+};
+
+SDK.prototype.parse = function( userID, msg ) {
+	var self = this;
+	var isString = ( typeof msg === 'string' );
+	var msgString = isString ? msg : JSON.stringify( msg );
+	var matches = ( msgString.match( PROFILE_REGEX ) || [] );
+	var storeCalls = matches.map( function( match ) {
+		var name = match.slice( 2, -1 );
+		return self.storage.get( userID, name, name );
+	});
+	return Promise.all( storeCalls ).then( function( values ) {
+		var flattened = matches.reduce( function( result, match, index ) {
+			var value = values[ index ];
+			return result.replace( match, value );
+		}, msgString );
+		var message = isString ? flattened : JSON.parse( flattened );
+		return message;
 	});
 };
 
-var onError = function( err ) {
-	if ( !err.status )
-		throw err;
-	var status = err.status;
-	var statusText = err.statusText;
-	var error = new Error( statusText );
-	error.status = status;
-	throw error;
+SDK.prototype.generate = function( output ) {
+	return {
+		output: {
+			text: output
+		}
+	};
 };
+
+exports.SDK = SDK;
+exports.Storage = Storage;
+exports.MemoryStorage = MemoryStorage;
