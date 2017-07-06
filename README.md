@@ -49,7 +49,7 @@ SDK.configure({
 
 SDK.start( BOT_ID )
   .then( response => {
-    const chatID = res.chatID;
+    const chatID = response.chatID;
     const onRequest = message => {
       console.log('You:', message );
     };
