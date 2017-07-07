@@ -44,12 +44,13 @@ const submitBtn = document.getElementById('submit-btn');
 
 SDK.configure({
   XIBMClientID: 'YOUR-IBM-Client-ID',
-  XIBMClientSecret: 'YOUR-IBM-Client-Secret'
+  XIBMClientSecret: 'YOUR-IBM-Client-Secret',
+  baseURL: 'https://api.ibm.com/virtualagent/run/api/v1/'
 });
 
 SDK.start( BOT_ID )
   .then( response => {
-    const chatID = res.chatID;
+    const chatID = response.chatID;
     const onRequest = message => {
       console.log('You:', message );
     };
