@@ -21,7 +21,7 @@ var axios = require('axios');
 var storage = require('./storage');
 
 var options = {
-	baseURL: 'https://dev.api.ibm.com/virtualagent/development/api/v1/',
+	baseURL: 'https://api.ibm.com/virtualagent/run/api/v1/',
 	timeout: 30 * 1000,
 	userID: null,
 	withCredentials: false,
@@ -53,7 +53,7 @@ var SDK = module.exports = {
 	 * @function configure
 	 * @memberof SDK
 	 * @param {Object} config
-	 * @param {string} config.baseURL=https://dev.api.ibm.com/virtualagent/development/api/v1/ - Optional: The URL the SDK should prepend to requests.
+	 * @param {string} config.baseURL=https://api.ibm.com/virtualagent/run/api/v1/ - Optional: The URL the SDK should prepend to requests.
 	 * @param {int} config.timeout=30000 - Optional: How long requests should wait before they error.
 	 * @param {string} config.userID - Optional: A user identifier, transformed by a one-way hashing algorithm. Used by your Metrics Dashboard to track usage.
 	 * @param {string} config.userLatLon - Optional: lat,lon or user ( eg. 28.3852,-81.5639 ). Used by your Metrics Dashboard to track usage.
